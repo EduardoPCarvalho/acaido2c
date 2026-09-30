@@ -645,6 +645,7 @@
       }
 
       // >>> ITENS DO CARDÁPIO: group "lanche" aparece em "Lanches e combos"; os demais em "Açaí de garrafa"
+      // >>> bottles: quantas garrafinhas de açaí o item traz (padrão 1; 0 = não conta para o mínimo de entrega)
       // >>> PREÇOS: edite o campo price (use ponto: 12.5 = R$ 12,50)
       // >>> FOTOS: img usa a foto embutida (ninho, natural...). Para usar outra, coloque o link ou caminho dela
       var FLAVORS = [
@@ -679,6 +680,7 @@
         {
           group: "lanche",
           id: "sanduba",
+          bottles: 0,
           name: "Sanduba Natural",
           desc: "Acompanha salpicão, batata palha, salada e um guaravita.",
           price: 15.0,
@@ -687,14 +689,16 @@
         {
           group: "lanche",
           id: "combonatural",
+          bottles: 1,
           name: "Combo Sanduba Natural + Açaí Natural",
-          desc: "Acompanha sanduba natural + açaí natural.",
+          desc: "Acompanha sanduba natural mais açaí natural.",
           price: 28.0,
           img: "combonatural",
         },
         {
           group: "lanche",
           id: "big2c",
+          bottles: 0,
           name: "BIG 2C",
           desc: "Acompanha salpicão, cheddar, ovo de codorna, batata palha, salada e um guaravita.",
           price: 20.0,
@@ -703,6 +707,7 @@
         {
           group: "lanche",
           id: "combobig",
+          bottles: 1,
           name: "BIG 2C + Açaí de Nutella",
           desc: "Acompanha o sanduba BIG 2C + açaí de Nutella.",
           price: 38.0,
@@ -710,11 +715,11 @@
         },
       ];
 
-      // >>> LOCAIS DE ENTREGA E TAXAS: edite fee (taxa em R$) e min (quantidade mínima de itens; 0 = sem mínimo)
+      // >>> LOCAIS DE ENTREGA E TAXAS: edite fee (taxa em R$) e min (quantidade mínima de garrafinhas de açaí; 0 = sem mínimo)
       var PLACES = [
         { n: "Itaipuaçu", fee: 3, min: 0 },
         { n: "Maricá", fee: 5, min: 0 },
-        { n: "Inoã", fee: 7, min: 0 },
+        { n: "Inoã", fee: 5, min: 0 },
         { n: "Niterói", fee: 0, min: 11, bairro: true },
         { n: "São Gonçalo", fee: 0, min: 11, bairro: true },
       ];
@@ -795,7 +800,7 @@
             "><h3>" +
             p.n +
             "</h3><p>" +
-            (p.min ? "Entrega acima de " + (p.min - 1) + " unidades. " : "") +
+            (p.min ? "Entrega acima de " + (p.min - 1) + " garrafinhas de açaí. " : "") +
             (p.fee ? "Taxa de entrega: " + fmt(p.fee) + "." : "Sem taxa de entrega.") +
             "</p></div>"
           );
@@ -816,6 +821,7 @@
         }
         function update() {
           var total = 0,
+            bottles = 0,
             sum = 0,
             items = [];
           FLAVORS.forEach(function (f) {
@@ -823,6 +829,7 @@
             document.getElementById("q-" + f.id).textContent = n;
             if (n) {
               total += n;
+              bottles += n * (f.bottles === undefined ? 1 : f.bottles);
               sum += n * f.price;
               items.push([f.name, n, f.price]);
             }
@@ -859,15 +866,15 @@
           } else if (!pl) {
             msg.textContent = "Escolha a cidade / bairro de entrega.";
             msg.className = "msg";
-          } else if (pl.min && total < pl.min) {
+          } else if (pl.min && bottles < pl.min) {
             msg.textContent =
               "Para " +
               pl.n +
               " entregamos acima de " +
               (pl.min - 1) +
-              " unidades. Faltam " +
-              (pl.min - total) +
-              " para liberar.";
+              " garrafinhas de açaí. Faltam " +
+              (pl.min - bottles) +
+              " garrafinha(s) para liberar.";
             msg.className = "msg bad";
           } else if (!v("nome") || !v("rua") || !v("num") || (pl.bairro && !v("bairro"))) {
             msg.textContent =
