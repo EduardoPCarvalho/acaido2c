@@ -627,6 +627,34 @@
           padding: 16px;
         }
       }
+      .sizes {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .sz {
+        flex: 1;
+        min-height: 44px;
+        border: 2px solid var(--line);
+        background: #0c0515;
+        color: #fff;
+        font:
+          700 15px "DM Sans",
+          sans-serif;
+        cursor: pointer;
+      }
+      .sz[aria-pressed="true"] {
+        background: var(--p);
+        border-color: var(--p2);
+      }
+      .card p.other {
+        margin: 8px 0 0;
+        font-size: 13px;
+        color: var(--p2);
+      }
+      .card p.other:empty {
+        display: none;
+      }
       @media (prefers-reduced-motion: reduce) {
         html {
           scroll-behavior: auto;
@@ -671,7 +699,7 @@
     <section id="catalogo">
       <div class="wrap">
         <h2>Catálogo <em>açaí de garrafa</em></h2>
-        <p class="sub">Toque no + para adicionar ao pedido.</p>
+        <p class="sub">Escolha o tamanho (300ml ou 500ml) e toque no + para adicionar.</p>
         <div class="grid" id="grid"></div>
       </div>
     </section>
@@ -679,15 +707,16 @@
     <section id="marmitex" style="padding-top: 0">
       <div class="wrap">
         <h2>Marmitex <em>de açaí</em></h2>
-        <p class="sub">1 litro de açaí. Monte do seu jeito escolhendo os acompanhamentos.</p>
+        <p class="sub">Escolha 500ml ou 1L e monte do seu jeito, escolhendo os acompanhamentos.</p>
         <div class="mcard">
-          <img id="mImg" alt="Marmitex de açaí 1L" />
+          <img id="mImg" alt="Marmitex de açaí" />
           <div class="mbody">
             <div class="hd">
-              <h3>Marmitex de açaí 1L</h3>
+              <h3>Marmitex de açaí</h3>
               <span class="price" id="mPrice"></span>
             </div>
             <p id="mHint"></p>
+            <div class="sizes" id="msizes" role="group" aria-label="Tamanho da marmitex"></div>
             <div class="chips" id="chips"></div>
             <p class="mcount" id="mCount" role="status"></p>
             <button type="button" class="madd" id="mAdd">Adicionar ao pedido</button>
@@ -806,7 +835,7 @@
           id: "combonatural",
           bottles: 1,
           name: "Combo Sanduba Natural + Açaí Natural",
-          desc: "Acompanha sanduba natural + açaí natural.",
+          desc: "Acompanha sanduba natural + açaí natural 300ml.",
           price: 28.0,
           img: "combonatural",
         },
@@ -824,17 +853,25 @@
           id: "combobig",
           bottles: 1,
           name: "BIG 2C + Açaí de Nutella",
-          desc: "Acompanha o sanduba BIG 2C + açaí de Nutella.",
+          desc: "Acompanha o sanduba BIG 2C + açaí de Nutella 300ml.",
           price: 38.0,
           img: "combobig",
         },
       ];
 
-      // >>> MARMITEX DE AÇAÍ: edite o preço (price), o máximo de acompanhamentos (max) e a lista (options)
+      // >>> MARMITEX DE AÇAÍ: edite os tamanhos e preços (sizes), o máximo de acompanhamentos (max) e a lista (options)
+      // >>> TAMANHOS DO AÇAÍ DE GARRAFA: extra = valor somado ao preço do 300ml (500ml = +R$ 5,00)
+      var SIZES = [
+        { key: "300ml", extra: 0 },
+        { key: "500ml", extra: 5 },
+      ];
+
       var MARMITEX = {
         name: "Marmitex de açaí",
-        size: "1L",
-        price: 30.0,
+        sizes: [
+          { key: "500ml", price: 20.0 },
+          { key: "1L", price: 30.0 },
+        ],
         max: 4,
         img: "marmitex",
         options: ["Uva", "Banana", "Morango", "Disquete", "Leite em pó", "Confete", "Jujuba"],
@@ -855,15 +892,54 @@
       function init() {
         document.getElementById("logo").src = IMAGES.logo;
         document.getElementById("heroImg").src = IMAGES.hero;
-        var qty = {};
+        var qty = {},
+          sel = {},
+          msel = MARMITEX.sizes[0].key;
+        function isAcai(f) {
+          return (f.group || "acai") == "acai";
+        }
+        function keyOf(f, size) {
+          return isAcai(f) ? f.id + "|" + size : f.id;
+        }
+        function priceOf(f, size) {
+          var extra = 0;
+          if (isAcai(f))
+            SIZES.forEach(function (z) {
+              if (z.key == size) extra = z.extra;
+            });
+          return f.price + extra;
+        }
         FLAVORS.forEach(function (f) {
-          qty[f.id] = 0;
+          sel[f.id] = SIZES[0].key;
+          (isAcai(f)
+            ? SIZES.map(function (z) {
+                return z.key;
+              })
+            : [""]
+          ).forEach(function (z) {
+            qty[keyOf(f, z)] = 0;
+          });
         });
         function renderGrid(gridId, group) {
           document.getElementById(gridId).innerHTML = FLAVORS.filter(function (f) {
             return (f.group || "acai") == group;
           })
             .map(function (f) {
+              var sizes = isAcai(f)
+                ? '<div class="sizes" role="group" aria-label="Tamanho">' +
+                  SIZES.map(function (z) {
+                    return (
+                      '<button type="button" class="sz" data-f="' +
+                      f.id +
+                      '" data-sz="' +
+                      z.key +
+                      '" aria-pressed="false">' +
+                      z.key +
+                      "</button>"
+                    );
+                  }).join("") +
+                  "</div>"
+                : "";
               return (
                 '<article class="card"><img src="' +
                 (IMAGES[f.img] || f.img) +
@@ -871,11 +947,12 @@
                 f.name +
                 '"><div class="body"><div class="hd"><h3>' +
                 f.name +
-                '</h3><span class="price">' +
-                fmt(f.price) +
-                "</span></div><p>" +
+                '</h3><span class="price" id="p-' +
+                f.id +
+                '"></span></div><p>' +
                 f.desc +
                 "</p>" +
+                sizes +
                 '<div class="qty"><button aria-label="Tirar ' +
                 f.name +
                 '" data-f="' +
@@ -886,7 +963,9 @@
                 f.name +
                 '" data-f="' +
                 f.id +
-                '" data-d="1">+</button></div></div></article>'
+                '" data-d="1">+</button></div><p class="other" id="o-' +
+                f.id +
+                '"></p></div></article>'
               );
             })
             .join("");
@@ -896,7 +975,37 @@
         var customs = [],
           chosen = {};
         document.getElementById("mImg").src = IMAGES[MARMITEX.img] || MARMITEX.img;
-        document.getElementById("mPrice").textContent = fmt(MARMITEX.price);
+        function mPriceNow() {
+          var p = 0;
+          MARMITEX.sizes.forEach(function (z) {
+            if (z.key == msel) p = z.price;
+          });
+          return p;
+        }
+        function renderM() {
+          document.getElementById("mPrice").textContent = fmt(mPriceNow());
+          document.querySelectorAll("[data-ms]").forEach(function (b) {
+            b.setAttribute("aria-pressed", b.dataset.ms == msel);
+          });
+        }
+        document.getElementById("msizes").innerHTML = MARMITEX.sizes
+          .map(function (z) {
+            return (
+              '<button type="button" class="sz" data-ms="' +
+              z.key +
+              '" aria-pressed="false">' +
+              z.key +
+              "</button>"
+            );
+          })
+          .join("");
+        document.getElementById("msizes").addEventListener("click", function (e) {
+          var b = e.target.closest("[data-ms]");
+          if (!b) return;
+          msel = b.dataset.ms;
+          renderM();
+        });
+        renderM();
         document.getElementById("chips").innerHTML = MARMITEX.options
           .map(function (o) {
             return (
@@ -941,9 +1050,9 @@
             label:
               MARMITEX.name +
               " " +
-              MARMITEX.size +
+              msel +
               (opts.length ? " (" + opts.join(", ") + ")" : " (só açaí)"),
-            price: MARMITEX.price,
+            price: mPriceNow(),
           });
           chosen = {};
           refreshChips();
@@ -963,8 +1072,17 @@
         var clickFn = function (e) {
           var b = e.target.closest("button");
           if (!b) return;
-          var id = b.dataset.f;
-          qty[id] = Math.max(0, qty[id] + Number(b.dataset.d));
+          var id = b.dataset.f,
+            f = FLAVORS.filter(function (x) {
+              return x.id == id;
+            })[0];
+          if (b.dataset.sz) {
+            sel[id] = b.dataset.sz;
+            update();
+            return;
+          }
+          var k = keyOf(f, sel[id]);
+          qty[k] = Math.max(0, qty[k] + Number(b.dataset.d));
           update();
         };
         ["grid", "grid2"].forEach(function (g) {
@@ -1017,13 +1135,33 @@
             sum = 0,
             items = [];
           FLAVORS.forEach(function (f) {
-            var n = qty[f.id];
-            document.getElementById("q-" + f.id).textContent = n;
-            if (n) {
-              total += n;
-              bottles += n * (f.bottles === undefined ? 1 : f.bottles);
-              sum += n * f.price;
-              items.push([f.name, n, f.price]);
+            var cur = sel[f.id];
+            (isAcai(f)
+              ? SIZES.map(function (z) {
+                  return z.key;
+                })
+              : [""]
+            ).forEach(function (z) {
+              var n = qty[keyOf(f, z)];
+              if (n) {
+                total += n;
+                bottles += n * (f.bottles === undefined ? 1 : f.bottles);
+                sum += n * priceOf(f, z);
+                items.push([f.name + (z ? " " + z : ""), n, priceOf(f, z)]);
+              }
+            });
+            document.getElementById("q-" + f.id).textContent = qty[keyOf(f, cur)];
+            document.getElementById("p-" + f.id).textContent = fmt(priceOf(f, cur));
+            if (isAcai(f)) {
+              var other = "";
+              SIZES.forEach(function (z) {
+                if (z.key != cur && qty[keyOf(f, z.key)])
+                  other += qty[keyOf(f, z.key)] + "x " + z.key + " no pedido. ";
+              });
+              document.getElementById("o-" + f.id).textContent = other;
+              document.querySelectorAll('[data-f="' + f.id + '"][data-sz]').forEach(function (bt) {
+                bt.setAttribute("aria-pressed", bt.dataset.sz == cur);
+              });
             }
           });
           customs.forEach(function (c, i) {
